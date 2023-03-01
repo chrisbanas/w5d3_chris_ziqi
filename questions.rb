@@ -157,8 +157,6 @@ class QuestionFollows
     end
 
     def self.find_by_id(id)
-
-        #make an inner join
         data = QuestionsDatabase.instance.execute(<<-SQL, id)
         SELECT
             *
@@ -172,18 +170,20 @@ class QuestionFollows
     end
 
     def self.followers_for_question_id(question_id)
+        #make an inner join
         data = QuestionsDatabase.instance.execute(<<-SQL, question_id)
         SELECT
-            user_id
+            *
         FROM
-            question_follows
+            users
+        JOIN
+            question_follows ON question_follows.user_id = users.id
         WHERE
             question_id = ?
         SQL
         return nil unless data.length > 0
-        QuestionFollows.new(data.first)
+        data.map { |datum| Users.new(datum) }
     end
-
 
     def initialize(options)
         @id = options['id']
@@ -288,11 +288,11 @@ end
 
 # p Replies.find_by_user_id(1)
 # p Replies.find_by_question_id(2)
-a = Users.find_by_id(2)
-b = Questions.find_by_id(2)
-c = Replies.find_by_id(2)
+# a = Users.find_by_id(2)
+# b = Questions.find_by_id(2)
+# c = Replies.find_by_id(2)
 # p a.authored_questions
 # p a.authored_replies
 # p b.author
 # p b.replies
-p c.child_replies
+p QuestionFollows.followers_for_question_id(1)
