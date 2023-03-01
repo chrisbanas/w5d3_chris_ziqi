@@ -178,10 +178,12 @@ class QuestionFollows
             users
         JOIN
             question_follows ON question_follows.user_id = users.id
+            --whichever is the primary key will get passed in as the new key. In this case users.id
         WHERE
             question_id = ?
         SQL
         return nil unless data.length > 0
+        p data
         data.map { |datum| Users.new(datum) }
     end
 
@@ -296,3 +298,4 @@ end
 # p b.author
 # p b.replies
 p QuestionFollows.followers_for_question_id(1)
+# p QuestionFollows.find_by_id(1)
