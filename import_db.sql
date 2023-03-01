@@ -63,3 +63,17 @@ VALUES
     ('Because people believe in crazy things', 2, 1, NULL),
     ('You didn''t sleep', 1, 2, NULL),
     ('Sleep more', 3, 2, 2);
+
+INSERT INTO
+    question_follows (user_id, question_id)
+VALUES
+    (1, 3),
+    (2, 1),
+    (3, 1);
+
+INSERT INTO
+    question_likes (user_id, question_id)
+VALUES
+    (1, 3),
+    (2, 1),
+    (3, 1);
