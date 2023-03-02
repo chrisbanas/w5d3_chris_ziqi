@@ -45,6 +45,14 @@ class Questions
         data.map { |datum| Questions.new(datum) } # someone may author many posts
     end
 
+    def self.most_followed(n)
+        QuestionFollows.most_followed_questions(n)
+    end
+
+    def self.most_liked(n)
+        QuestionLikes.most_liked_questions(n)
+    end
+
     def initialize(options)
         @id = options['id']
         @title = options['title']
@@ -62,6 +70,14 @@ class Questions
 
     def followers
         QuestionFollows.followers_for_question_id(id)
+    end
+
+    def likers
+        QuestionLikes.likers_for_question_id(id)
+    end
+
+    def num_likes
+        QuestionLikes.num_likes_for_question_id(id)
     end
 
 end
@@ -120,6 +136,26 @@ class Users
         QuestionFollows.followed_questions_for_user_id(id)
     end
 
+    def liked_questions
+        QuestionLikes.liked_questions_for_user_id(id)
+    end
+
+    def average_karma
+        data = QuestionsDatabase.instance.execute(<<-SQL, id)
+        SELECT
+            CAST(COUNT(question_likes.id) / COUNT(DISTINCT(questions.id)) AS FLOAT)
+        FROM
+            questions
+        LEFT JOIN
+            question_likes ON question_likes.question_id = questions.id
+        WHERE questions.id = ?
+
+        SQL
+        return nil unless data.length > 0
+        data
+        # data.first.values.last / data.first.values.first
+    end
+
 end
 
 class QuestionLikes
@@ -142,6 +178,68 @@ class QuestionLikes
         SQL
         return nil unless data.length > 0
         QuestionLikes.new(data.first)
+    end
+
+    def self.likers_for_question_id(question_id)
+        data = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+        SELECT
+            users.id, fname, lname
+        FROM
+            question_likes
+        JOIN
+            users ON question_likes.user_id = users.id
+        WHERE
+            question_id = ?
+        SQL
+        return nil unless data.length > 0
+        data.map { |datum| Users.new(datum) }
+
+    end
+
+    def self.num_likes_for_question_id(question_id)
+        data = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+        SELECT
+            COUNT(users.id)
+        FROM
+            question_likes
+        JOIN
+            users ON question_likes.user_id = users.id
+        WHERE
+            question_id = ?
+        SQL
+        return nil unless data.length > 0
+        data.first.values.first
+    end
+
+    def self.liked_questions_for_user_id(user_id)
+        data = QuestionsDatabase.instance.execute(<<-SQL, user_id)
+        SELECT
+            *
+        FROM
+            question_likes
+        JOIN
+            questions ON question_likes.question_id = questions.id
+        WHERE
+            user_id = ?
+        SQL
+        return nil unless data.length > 0
+        data.map { |datum| Questions.new(datum) }
+    end
+
+    def self.most_liked_questions(n)
+        data = QuestionsDatabase.instance.execute(<<-SQL)
+        SELECT
+            *
+        FROM
+            question_likes
+        JOIN
+            questions ON question_likes.question_id = questions.id
+        GROUP BY
+            questions.id
+        ORDER BY
+            COUNT(questions.id) DESC
+        SQL
+        data.map { |datum| Questions.new(datum) }.take(n)
     end
 
 
@@ -186,7 +284,7 @@ class QuestionFollows
         GROUP BY
             question_id
         ORDER BY
-            COUNT(*) DESC    
+            COUNT(*) DESC
         SQL
         return nil unless data.length > 0
         data.map { |datum| Questions.new(datum) }.take(n)
@@ -328,8 +426,8 @@ end
 
 # # p Replies.find_by_user_id(1)
 # # p Replies.find_by_question_id(2)
-#  a = Users.find_by_id(2)
-#  b = Questions.find_by_id(1)
+a = Users.find_by_id(1)
+# b = Questions.find_by_id(1)
 # # c = Replies.find_by_id(2)
 # # p a.authored_questions
 # # p a.authored_replies
@@ -339,4 +437,16 @@ end
 # puts
 # p b.followers
 # # p QuestionFollows.find_by_id(1)
-p QuestionFollows.most_followed_questions(1)
+# p QuestionFollows.most_followed_questions(1)
+# p QuestionLikes.liked_questions_for_user_id(3)
+# p QuestionLikes.liked_questions_for_user_id(2)
+# p QuestionLikes.liked_questions_for_user_id(1)
+
+# p Questions.most_liked(2)
+
+# p b.likers
+# p b.num_likes
+
+# p a.liked_questions
+
+p a.average_karma
