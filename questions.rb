@@ -60,6 +60,10 @@ class Questions
         Replies.find_by_question_id(id)
     end
 
+    def followers
+        QuestionFollows.followers_for_question_id(id)
+    end
+
 end
 
 class Users
@@ -112,7 +116,9 @@ class Users
         Replies.find_by_user_id(id)
     end
 
-
+    def followed_questions
+        QuestionFollows.followed_questions_for_user_id(id)
+    end
 
 end
 
@@ -169,6 +175,23 @@ class QuestionFollows
         QuestionFollows.new(data.first)
     end
 
+    def self.most_followed_questions(n)
+        data = QuestionsDatabase.instance.execute(<<-SQL)
+        SELECT
+            *
+        FROM
+            question_follows
+        JOIN
+            questions ON question_follows.question_id = questions.id
+        GROUP BY
+            question_id
+        ORDER BY
+            COUNT(*) DESC    
+        SQL
+        return nil unless data.length > 0
+        data.map { |datum| Questions.new(datum) }.take(n)
+    end
+
     def self.followers_for_question_id(question_id)
         #make an inner join
         data = QuestionsDatabase.instance.execute(<<-SQL, question_id)
@@ -183,8 +206,23 @@ class QuestionFollows
             question_id = ?
         SQL
         return nil unless data.length > 0
-        p data
         data.map { |datum| Users.new(datum) }
+    end
+
+    def self.followed_questions_for_user_id(user_id)
+        data = QuestionsDatabase.instance.execute(<<-SQL, user_id)
+            SELECT
+                *
+            FROM
+                questions
+            JOIN
+                question_follows ON question_follows.question_id = questions.id
+                --whichever is the primary key will get passed in as the new key. In this case users.id
+            WHERE
+                user_id = ?
+            SQL
+        return nil unless data.length > 0
+        data.map { |datum| Questions.new(datum) }
     end
 
     def initialize(options)
@@ -288,14 +326,17 @@ end
 
 
 
-# p Replies.find_by_user_id(1)
-# p Replies.find_by_question_id(2)
-# a = Users.find_by_id(2)
-# b = Questions.find_by_id(2)
-# c = Replies.find_by_id(2)
-# p a.authored_questions
-# p a.authored_replies
-# p b.author
-# p b.replies
-p QuestionFollows.followers_for_question_id(1)
-# p QuestionFollows.find_by_id(1)
+# # p Replies.find_by_user_id(1)
+# # p Replies.find_by_question_id(2)
+#  a = Users.find_by_id(2)
+#  b = Questions.find_by_id(1)
+# # c = Replies.find_by_id(2)
+# # p a.authored_questions
+# # p a.authored_replies
+# # p b.author
+# # p b.replies
+# p a.followed_questions
+# puts
+# p b.followers
+# # p QuestionFollows.find_by_id(1)
+p QuestionFollows.most_followed_questions(1)
